@@ -14,6 +14,7 @@ Note : This project is not endorsed by Google
 Then download a history file from Google My Activity containing your Play Music History.
 <br>
 To download a history file <a href="https://takeout.google.com/u/0/?hl=fr&utm_source=google-account&utm_medium=web&pageId=none"> go here </a>. Detailled instructions are avaialble <a href="https://raw.githubusercontent.com/Lolincolc/gmusic_wrapped/master/howto/help.jpg"> here </a>
+<br><br>
 You can now launch the script with the following options :
 <br>
 `python main.py [path/to/your/json/history_file]`
