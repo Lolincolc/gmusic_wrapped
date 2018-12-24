@@ -1,4 +1,4 @@
-# GMusic Year Wrapper V0.0.0.0.0.1 Pre-Alpha
+# GMusic Year Wrapper V0.0.0.2 Pre-Alpha
 A spotify year wrap like for Google Play Music
 
 Note : This project is highly experimental
