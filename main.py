@@ -132,10 +132,10 @@ def get_duration(cursor):
 
 def gen_html_report(cursor, data, expect):
 	sys.stdout = open('report.html', 'w')
-	print ("""<!DOCTYPE html><html><head><title>Wrapped</title><style type="text/css">body{background-color: #f58d15;}.center-div{position: absolute; margin: auto; top: 0; right: 0; bottom: 0; left: 0; width: 50%; height: 80%; background-color: #503651; border-radius: 3px; padding: 10px;}.play_logo{width: 7%;position: relative;top: 30px;left: 50px;}.title_logo{width: 30%;position: relative;top: 30px;left: 50px;}.right_title{position: absolute;font-family: "Product Sans";top: 55px;right: 20%;font-size: 2em;color: #f58d15;}.container{position: relative;top: 13%;left: 53px;}.minutes_title{font-family: "Product Sans";font-size: 2em;color: #f58d15;}.minutes{font-family: "Product Sans";font-size: 6em;color: #f58d15;}.row{display: flex;}.column{flex: 50%;}.list{font-family: "Roboto";font-size: 1.5em;line-height: 30px;color: #f58d15;}</style></head><body><div class="center-div"><img src="play_logo.png" class="play_logo"><img src="title.png" class="title_logo"/><span class="right_title">""")
+	print ("""<!DOCTYPE html><html><head><title>Wrapped</title><style type="text/css">body{background-color: #f58d15;}.center-div{position: absolute; margin: auto; top: 0; right: 0; bottom: 0; left: 0; width: 50%; height: 80%; background-color: #503651; border-radius: 3px; padding: 10px;}.play_logo{width: 7%;position: relative;top: 30px;left: 50px;}.title_logo{width: 30%;position: relative;top: 30px;left: 50px;}.right_title{position: absolute;font-family: "Product Sans";top: 55px;right: 10%;font-size: 2em;color: #f2481d;}.container{position: relative;top: 13%;left: 53px;}.minutes_title{font-family: "Product Sans";font-size: 2em;color: #f58d15;}.minutes{font-family: "Product Sans";font-size: 6em;color: #f58d15;}.row{display: flex;}.column{flex: 50%;}.list{font-family: "Roboto";font-size: 1.5em;line-height: 30px;color: #f58d15;}</style></head><body><div class="center-div"><img src="play_logo.png" class="play_logo"><img src="title.png" class="title_logo"/><span class="right_title">""")
 	print (expect)
 	print (""" Wrapped</span><div class="container"><div class="minutes_title">Minutes Listened</div><div class="minutes">""")
-	if verbose:
+	if duration:
 		print (data[0]/60000)
 	else:
 		print("N/A")
@@ -182,7 +182,6 @@ def gen_report(cursor, data, expect):
 
 def main():
 	flags()
-	#Config
 	conn = sqlite3.connect('gmusic.db')
 	cursor = conn.cursor()
 	with open('schema.sql') as fp:
@@ -195,7 +194,6 @@ def main():
 	print ("We are now processing your file. Note that this process can be long (generally between 1 and 4 hours)")
 	print ("No more informations will be displayed during this process. You can check log.dat at any time to check progression.")
 
-	#Start log in log file
 	if verbose:
 		sys.stdout = open('log.dat', 'w')
 
@@ -212,4 +210,5 @@ def main():
 		sys.stdout.close()
 	gen_report(cursor, data, expect)
 
-main()
+if __name__ == "__main__":
+	main()
