@@ -11,14 +11,15 @@ Note : This project is highly experimental
 `sudo pip install requests`
 <br>
 <br>
-Then download a history file from Google My Activity containing your Play Music History. Paste it in the same folder and change line 76 with the name of your file. You will also need a token for LastFm API that is used to retrieve song duration. Paste your LastFm token line 133.
+Then download a history file from Google My Activity containing your Play Music History.
 <br>
-When you are ready launch the script with `python test.py`
+You can now launch the script with the following options :
+<br>
+`python main.py [your html history file name]`
+<br>
+`-v` to enable a full detailed log in log.dt
+<br>
+`-d [LastFm API key]` to enable duration calculation
 <br>
 <br>
-Note : This can take some time, for a full year history it usually takes between 1 and 3 hours to generate a report.
-<br>
-<br>
-Your report will be available in report.dat and a full detailled logger will be available in out.dat that contains more informations.
-<br><br>
-I am working on an improved and more automated version, stay tuned !
+Your report will be available in report.dat. Note that it usually takes between 1 and 4 hours to complete a report and it can take several more hours with `-d` option.
