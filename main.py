@@ -1,90 +1,13 @@
-﻿from bs4 import BeautifulSoup
-import sqlite3
-from time import sleep
+﻿import sqlite3
 import datetime
-import getopt, sys
+import sys, getopt
+import json
 import requests
-import string
-import re
 
+expect = 2018
 verbose = False
 duration = False
 lastFmToken = ""
-
-def titleFromRaw(raw):
-	splitted = str(raw)
-	splitted = splitted.split('<br/>')
-	splitted_edit = splitted[0]
-	splitted_edit = splitted_edit[83:]
-	return splitted_edit.strip()
-
-
-def artistFromRaw(raw):
-	splitted = str(raw)
-	splitted = splitted.split('<br/>')
-	try:
-		splitted_edit = splitted[1].strip()
-		return splitted_edit.strip()
-	except:
-		return "error"
-
-
-def shouldNotIngore(raw):
-	splitted = raw.split('\n')
-	splitted_edit = splitted[0]
-	splitted_edit = splitted_edit[:8]
-	if (splitted_edit.encode("utf-8") == "A écouté"):
-		return True
-	else:
-		return False
-
-def open_file():
-	if (sys.argv[1].endswith('.html')):
-		try:
-			file = open(sys.argv[1], "r")
-			return file
-		except:
-			print "Could not open your history file"
-			sys.exit()
-	else:
-		print "Your history file should be an html file"
-		sys.exit()
-
-def create_env_db(conn):
-	cursor = conn.cursor()
-	cursor.execute("""
-	CREATE TABLE IF NOT EXISTS songs(
-		 id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-		 artist TEXT,
-		 title TEXT,
-		 year TEXT
-	)
-	""")
-	cursor.execute("""
-	CREATE TABLE IF NOT EXISTS artist_count(
-		 id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-		 artist TEXT,
-		 occurence int
-	)
-	""")
-	cursor.execute("""
-	CREATE TABLE IF NOT EXISTS songs_count(
-		 id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-		 title TEXT,
-		 occurence int
-	)
-	""")
-	cursor.execute("""
-	CREATE TABLE IF NOT EXISTS report(
-		 id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-		 title TEXT,
-		 artist TEXT,
-		 duration int,
-		 occurence int
-	)
-	""")
-	conn.commit()
-	return cursor
 
 def flags():
 	opts, args = getopt.getopt(sys.argv[2:], "d:v", ["duration="])
@@ -98,34 +21,62 @@ def flags():
 			global lastFmToken
 			lastFmToken = token
 
-def parse_html(html_doc, cursor):
-	soup = BeautifulSoup(html_doc, "html.parser")
-	for p in soup.find_all("div", {"class": "content-cell mdl-cell mdl-cell--6-col mdl-typography--body-1"}):
-		if shouldNotIngore(p.text):
-			print datetime.datetime.now()
-			cursor.execute("""INSERT INTO songs(title, artist, year) VALUES(?, ?, ?)""", (repr(titleFromRaw(p)), repr(artistFromRaw(p)), "2018"))
+def shouldNotIgnore(title, year, expect):
+	splitted = title[:8]
+	if (splitted.encode("utf-8") == "A écouté"):
+		if (year[:4].encode("utf-8") == str(expect)):
+			return True
+		else:
+			False
+	else:
+		return False
 
-def print_db(cursor, printable):
+def open_file():
+	if (sys.argv[1].endswith('.json')):
+		try:
+			file = open(sys.argv[1], "r")
+			return file
+		except:
+			print "Could not open your history file"
+			sys.exit()
+	else:
+		print "Your history file should be an html file"
+		sys.exit()
+
+def parse_json(file, cursor):
+	json_object = json.load(file)
+	for obj in json_object:
+		if (shouldNotIgnore(obj['title'], obj['time'], expect) and 'description' in obj):
+			cursor.execute("""INSERT INTO songs(title, artist, year) VALUES(?, ?, ?)""", (obj['title'][9:], obj['description'], obj['time']))
+
+def print_db(cursor):
 	#Test results from DB
 	print ("####################Full List#####################")
 	cursor.execute("""SELECT id, artist, title, year FROM songs""")
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} : {1} - {2} - {3} | {4}'.format(row[0], re.sub(' +', ' ', filter(lambda x: x in printable, eval(row[1].encode("utf-8")).replace('\n', '').replace('é', 'e').strip())), re.sub(' +', ' ', filter(lambda x: x in printable, eval(row[2].encode("utf-8")).replace('\n', '').replace('é', 'e').strip())), row[3], datetime.datetime.now()))
+		print('{0} : {1} - {2} - {3}'.format(row[0], row[1].encode("utf-8"), row[2].encode("utf-8"), row[3]))
 
-def prepare_clean_db(cursor, printable):
+def prepare_clean_db(cursor):
 	#Artist top
 	cursor.execute("""SELECT artist, COUNT(*) FROM songs GROUP BY artist""")
 	result = cursor.fetchall()
 	for res in result:
-		cursor.execute("""INSERT INTO artist_count(artist, occurence) VALUES(?, ?)""", (re.sub(' +', ' ', filter(lambda x: x in printable, eval(res[0].encode("utf-8")).replace('\n', '').replace('é', 'e').strip())), res[1]))
+		cursor.execute("""INSERT INTO artist_count(artist, occurence) VALUES(?, ?)""", (res[0], res[1]))
 
 	#Song Top
 	cursor.execute("""SELECT title, COUNT(*) FROM songs GROUP BY title""")
 	result_song = cursor.fetchall()
 	for res_song in result_song:
-		cursor.execute("""INSERT INTO songs_count(title, occurence) VALUES(?, ?)""", (re.sub(' +', ' ', filter(lambda x: x in printable, eval(res_song[0].encode("utf-8")).replace('\n', '').replace('é', 'e').strip())), res_song[1]))
+		cursor.execute("""INSERT INTO songs_count(title, occurence) VALUES(?, ?)""", (res_song[0], res_song[1]))
+
+def delete_duplicate(cursor):
+	#Doublon Deletor
+	cursor.execute("""SELECT title, COUNT(*), artist FROM songs GROUP BY title""")
+	result_doublon = cursor.fetchall()
+	for res_doublon in result_doublon:
+		cursor.execute("""INSERT INTO report(title, artist, occurence) VALUES(?, ?, ?)""", (res_doublon[0], res_doublon[2], res_doublon[1]))
 
 def print_full_tops(cursor):
 	print ("####################Top Artists#####################")
@@ -142,13 +93,6 @@ def print_full_tops(cursor):
 		datetime.datetime.now()
 		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
 
-def delete_duplicate(cursor, printable):
-	#Doublon Deletor
-	cursor.execute("""SELECT title, COUNT(*), artist FROM songs GROUP BY title""")
-	result_doublon = cursor.fetchall()
-	for res_doublon in result_doublon:
-		cursor.execute("""INSERT INTO report(title, artist, occurence) VALUES(?, ?, ?)""", (re.sub(' +', ' ', filter(lambda x: x in printable, eval(res_doublon[0].encode("utf-8")).replace('\n', '').strip())), re.sub(' +', ' ', filter(lambda x: x in printable, eval(res_doublon[2].encode("utf-8")).replace('\n', '').strip())), res_doublon[1],))
-
 def get_duration(cursor):
 	#Count duration
 	cursor.execute("""SELECT id, artist, title FROM report""")
@@ -164,6 +108,8 @@ def get_duration(cursor):
 				cursor.execute("""UPDATE report SET duration = ? WHERE id = ?""", (0, row[0]))
 				continue
 			else:
+				if verbose:
+					print ('duration {0}'.format(row[0]))
 				duration = json_parsed['track']['duration']
 				cursor.execute("""UPDATE report SET duration = ? WHERE id = ?""", (duration, row[0]))
 
@@ -184,7 +130,31 @@ def get_duration(cursor):
 			error_rate = error_rate + 1
 	return (total_duration, error_rate, song_count)
 
-def gen_report(cursor, data):
+def gen_html_report(cursor, data, expect):
+	sys.stdout = open('report.html', 'w')
+	print ("""<!DOCTYPE html><html><head><title>Wrapped</title><style type="text/css">body{background-color: #f58d15;}.center-div{position: absolute; margin: auto; top: 0; right: 0; bottom: 0; left: 0; width: 50%; height: 80%; background-color: #503651; border-radius: 3px; padding: 10px;}.play_logo{width: 7%;position: relative;top: 30px;left: 50px;}.title_logo{width: 30%;position: relative;top: 30px;left: 50px;}.right_title{position: absolute;font-family: "Product Sans";top: 55px;right: 20%;font-size: 2em;color: #f58d15;}.container{position: relative;top: 13%;left: 53px;}.minutes_title{font-family: "Product Sans";font-size: 2em;color: #f58d15;}.minutes{font-family: "Product Sans";font-size: 6em;color: #f58d15;}.row{display: flex;}.column{flex: 50%;}.list{font-family: "Roboto";font-size: 1.5em;line-height: 30px;color: #f58d15;}</style></head><body><div class="center-div"><img src="play_logo.png" class="play_logo"><img src="title.png" class="title_logo"/><span class="right_title">""")
+	print (expect)
+	print (""" Wrapped</span><div class="container"><div class="minutes_title">Minutes Listened</div><div class="minutes">""")
+	if verbose:
+		print (data[0]/60000)
+	else:
+		print("N/A")
+	print ("""</div><br><br><div class="row"><div class="column"><div class="minutes_title">Top Artists</div><div class="list">""")
+	cursor.execute("""SELECT artist FROM artist_count ORDER by occurence DESC LIMIT 10""")
+	rows = cursor.fetchall()
+	for row in rows:
+		print ("<br>")
+		print('{0}'.format(row[0].encode("utf-8")))
+	print ("""</div></div><div class="column"><div class="minutes_title">Top Songs</div><div class="list">""")
+	cursor.execute("""SELECT title FROM songs_count ORDER by occurence DESC LIMIT 10""")
+	rows = cursor.fetchall()
+	for row in rows:
+		print ("<br>")
+		print ('{0}'.format(row[0].encode("utf-8")))
+	print ("""</div></div></div></div></div></body></html>""")
+	sys.stdout.close()
+
+def gen_report(cursor, data, expect):
 	#Top 10 Report
 	sys.stdout = open('report.dat', 'w')
 	print ("#################### Top Artists #####################")
@@ -208,17 +178,18 @@ def gen_report(cursor, data):
 		print ('Error count : ', data[1])
 		print ('Error rate : {0}%'.format((float(data[1])/data[2])*100))
 	sys.stdout.close()
+	gen_html_report(cursor, data, expect)
 
 def main():
 	flags()
 	#Config
-	printable = set(string.printable)
 	conn = sqlite3.connect('gmusic.db')
-	cursor = create_env_db(conn)
+	cursor = conn.cursor()
+	with open('schema.sql') as fp:
+		cursor.executescript(fp.read())
 	data = ""
 
 	file = open_file()
-	html_doc = file.read()
 
 	print ("Welcome on GMusic Year Wrapper.")
 	print ("We are now processing your file. Note that this process can be long (generally between 1 and 4 hours)")
@@ -228,17 +199,17 @@ def main():
 	if verbose:
 		sys.stdout = open('log.dat', 'w')
 
-	parse_html(html_doc, cursor)
+	parse_json(file, cursor)
 	if verbose:
-		print_db(cursor, printable)
-	prepare_clean_db(cursor, printable)
+		print_db(cursor)
+	prepare_clean_db(cursor)
 	if verbose:
 		print_full_tops(cursor)
-	delete_duplicate(cursor, printable)
+	delete_duplicate(cursor)
 	if duration:
 		data = get_duration(cursor)
 	if verbose:
 		sys.stdout.close()
-	gen_report(cursor, data)
+	gen_report(cursor, data, expect)
 
 main()
