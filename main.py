@@ -21,9 +21,26 @@ def flags():
 			global lastFmToken
 			lastFmToken = token
 
+def i18n_string(string):
+	fr = string[:8]
+	en = string[:11]
+	if (fr.encode("utf-8") == "A écouté"):
+		return True
+	elif (en.encode("utf-8") == "Listened to"):
+		return True
+	else:
+		return False
+
+def i18n_title(title):
+	fr = title[:8]
+	en = title[:11]
+	if (fr.encode("utf-8") == "A écouté"):
+		return title[9:]
+	elif (en.encode("utf-8") == "Listened to"):
+		return title[12:]
+
 def shouldNotIgnore(title, year, expect):
-	splitted = title[:8]
-	if (splitted.encode("utf-8") == "A écouté"):
+	if (i18n_string(title)):
 		if (year[:4].encode("utf-8") == str(expect)):
 			return True
 		else:
@@ -47,10 +64,10 @@ def parse_json(file, cursor):
 	json_object = json.load(file)
 	for obj in json_object:
 		if (shouldNotIgnore(obj['title'], obj['time'], expect) and 'description' in obj):
-			cursor.execute("""INSERT INTO songs(title, artist, year) VALUES(?, ?, ?)""", (obj['title'][9:], obj['description'], obj['time']))
+			cursor.execute("""INSERT INTO songs(title, artist, year) VALUES(?, ?, ?)""", (i18n_title(obj['title']), obj['description'], obj['time']))
 
 def print_db(cursor):
-	#Test results from DB
+	#Print results from DB
 	print ("####################Full List#####################")
 	cursor.execute("""SELECT id, artist, title, year FROM songs""")
 	rows = cursor.fetchall()
@@ -58,7 +75,7 @@ def print_db(cursor):
 		datetime.datetime.now()
 		print('{0} : {1} - {2} - {3}'.format(row[0], row[1].encode("utf-8"), row[2].encode("utf-8"), row[3]))
 
-def prepare_clean_db(cursor):
+def prepare_tops(cursor):
 	#Artist top
 	cursor.execute("""SELECT artist, COUNT(*) FROM songs GROUP BY artist""")
 	result = cursor.fetchall()
@@ -191,7 +208,7 @@ def main():
 	file = open_file()
 
 	print ("Welcome on GMusic Year Wrapper.")
-	print ("We are now processing your file. Note that this process can be long (generally between 1 and 4 hours)")
+	print ("We are now processing your file.")
 	print ("No more informations will be displayed during this process. You can check log.dat at any time to check progression.")
 
 	if verbose:
@@ -200,7 +217,7 @@ def main():
 	parse_json(file, cursor)
 	if verbose:
 		print_db(cursor)
-	prepare_clean_db(cursor)
+	prepare_tops(cursor)
 	if verbose:
 		print_full_tops(cursor)
 	delete_duplicate(cursor)
