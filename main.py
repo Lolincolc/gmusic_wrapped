@@ -39,7 +39,7 @@ def i18n_title(title):
 	elif (en.encode("utf-8") == "Listened to"):
 		return title[12:]
 
-def shouldNotIgnore(title, year, expect):
+def should_not_ignore(title, year, expect):
 	if (i18n_string(title)):
 		if (year[:4].encode("utf-8") == str(expect)):
 			return True
@@ -57,13 +57,13 @@ def open_file():
 			print "Could not open your history file"
 			sys.exit()
 	else:
-		print "Your history file should be an html file"
+		print "Your history file should be a json file"
 		sys.exit()
 
 def parse_json(file, cursor):
 	json_object = json.load(file)
 	for obj in json_object:
-		if (shouldNotIgnore(obj['title'], obj['time'], expect) and 'description' in obj):
+		if (should_not_ignore(obj['title'], obj['time'], expect) and 'description' in obj):
 			cursor.execute("""INSERT INTO songs(title, artist, year) VALUES(?, ?, ?)""", (i18n_title(obj['title']), obj['description'], obj['time']))
 
 def print_db(cursor):
