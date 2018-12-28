@@ -3,6 +3,7 @@ import datetime
 import sys, getopt
 import json
 import requests
+import time
 
 expect = "2018"
 verbose = False
@@ -15,7 +16,7 @@ def flags():
 		if o == "-v":
 			global verbose
 			verbose = True
-		elif o in ("-d", "--duration"):
+		if o in ("-d", "--duration"):
 			global duration
 			duration = True
 			global lastFmToken
@@ -117,11 +118,11 @@ def get_duration(cursor):
 	for row in rows:
 		datetime.datetime.now()
 		parameters = {"method": "track.getInfo", "api_key": lastFmToken, "artist": row[1], "track": row[2], "format": "json"}
-		response = requests.get("http://ws.audioscrobbler.com//2.0/", params=parameters)
+		response = requests.get("https://ws.audioscrobbler.com//2.0/", params=parameters)
 		if (response.status_code == 200):
 			json_parsed = response.json()
 			if ('error' in json_parsed):
-				print("error found")
+				print("error found", json_parsed)
 				cursor.execute("""UPDATE report SET duration = ? WHERE id = ?""", (0, row[0]))
 				continue
 			else:
@@ -129,6 +130,9 @@ def get_duration(cursor):
 					print ('duration {0}'.format(row[0]))
 				duration = json_parsed['track']['duration']
 				cursor.execute("""UPDATE report SET duration = ? WHERE id = ?""", (duration, row[0]))
+		else:
+			print("Non 200 response code returned, sleeping...")
+			time.sleep(1)
 
 	#Calcul total duration
 	if verbose:
