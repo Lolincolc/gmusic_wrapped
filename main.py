@@ -54,10 +54,10 @@ def open_file():
 			file = open(sys.argv[1], "r")
 			return file
 		except:
-			print "Could not open your history file"
+			print("Could not open your history file")
 			sys.exit()
 	else:
-		print "Your history file should be a json file"
+		print("Your history file should be a json file")
 		sys.exit()
 
 def parse_json(file, cursor):
@@ -121,7 +121,7 @@ def get_duration(cursor):
 		if (response.status_code == 200):
 			json_parsed = response.json()
 			if ('error' in json_parsed):
-				print "error found"
+				print("error found")
 				cursor.execute("""UPDATE report SET duration = ? WHERE id = ?""", (0, row[0]))
 				continue
 			else:
