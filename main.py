@@ -4,7 +4,7 @@ import sys, getopt
 import json
 import requests
 
-expect = 2018
+expect = "2018"
 verbose = False
 duration = False
 lastFmToken = ""
@@ -24,9 +24,9 @@ def flags():
 def i18n_string(string):
 	fr = string[:8]
 	en = string[:11]
-	if (fr.encode("utf-8") == "A écouté"):
+	if (fr == "A écouté"):
 		return True
-	elif (en.encode("utf-8") == "Listened to"):
+	elif (en == "Listened to"):
 		return True
 	else:
 		return False
@@ -34,14 +34,14 @@ def i18n_string(string):
 def i18n_title(title):
 	fr = title[:8]
 	en = title[:11]
-	if (fr.encode("utf-8") == "A écouté"):
+	if (fr == "A écouté"):
 		return title[9:]
-	elif (en.encode("utf-8") == "Listened to"):
+	elif (en == "Listened to"):
 		return title[12:]
 
 def should_not_ignore(title, year, expect):
 	if (i18n_string(title)):
-		if (year[:4].encode("utf-8") == str(expect)):
+		if (year[:4] == str(expect)):
 			return True
 		else:
 			False
@@ -73,7 +73,7 @@ def print_db(cursor):
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} : {1} - {2} - {3}'.format(row[0], row[1].encode("utf-8"), row[2].encode("utf-8"), row[3]))
+		print('{0} : {1} - {2} - {3}'.format(row[0], row[1], row[2], row[3]))
 
 def prepare_tops(cursor):
 	#Artist top
@@ -101,14 +101,14 @@ def print_full_tops(cursor):
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
+		print('{0} - {1}'.format(row[0], row[1]))
 
 	print ("####################Top Songs#####################")
 	cursor.execute("""SELECT title, occurence FROM songs_count ORDER by occurence DESC""")
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
+		print('{0} - {1}'.format(row[0], row[1]))
 
 def get_duration(cursor):
 	#Count duration
@@ -116,7 +116,7 @@ def get_duration(cursor):
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		parameters = {"method": "track.getInfo", "api_key": lastFmToken, "artist": row[1].encode("utf-8"), "track": row[2].encode("utf-8"), "format": "json"}
+		parameters = {"method": "track.getInfo", "api_key": lastFmToken, "artist": row[1], "track": row[2], "format": "json"}
 		response = requests.get("http://ws.audioscrobbler.com//2.0/", params=parameters)
 		if (response.status_code == 200):
 			json_parsed = response.json()
@@ -141,7 +141,7 @@ def get_duration(cursor):
 		datetime.datetime.now()
 		song_count = row[0]
 		if verbose:
-			print('{0} : {1} - {2}- {3} - occurence : {4}'.format(row[0], row[1].encode("utf-8"), row[2].encode("utf-8"), row[3], row[4]))
+			print('{0} : {1} - {2}- {3} - occurence : {4}'.format(row[0], row[1], row[2], row[3], row[4]))
 		total_duration += row[3] * row[4]
 		if row[3] == 0:
 			error_rate = error_rate + 1
@@ -161,13 +161,13 @@ def gen_html_report(cursor, data, expect):
 	rows = cursor.fetchall()
 	for row in rows:
 		print ("<br>")
-		print('{0}'.format(row[0].encode("utf-8")))
+		print('{0}'.format(row[0]))
 	print ("""</div></div><div class="column"><div class="minutes_title">Top Songs</div><div class="list">""")
 	cursor.execute("""SELECT title FROM songs_count ORDER by occurence DESC LIMIT 10""")
 	rows = cursor.fetchall()
 	for row in rows:
 		print ("<br>")
-		print ('{0}'.format(row[0].encode("utf-8")))
+		print ('{0}'.format(row[0]))
 	print ("""</div></div></div></div></div></body></html>""")
 	sys.stdout.close()
 
@@ -179,14 +179,14 @@ def gen_report(cursor, data, expect):
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
+		print('{0} - {1}'.format(row[0], row[1]))
 
 	print ("#################### Top Songs #####################")
 	cursor.execute("""SELECT title, occurence FROM songs_count ORDER by occurence DESC LIMIT 10""")
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
+		print('{0} - {1}'.format(row[0], row[1]))
 
 	if duration:
 		print ("\n#################### Duration #####################")
