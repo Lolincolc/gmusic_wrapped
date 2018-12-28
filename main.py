@@ -84,10 +84,10 @@ def prepare_tops(cursor):
 		cursor.execute("""INSERT INTO artist_count(artist, occurence) VALUES(?, ?)""", (res[0], res[1]))
 
 	#Song Top
-	cursor.execute("""SELECT title, COUNT(*) FROM songs GROUP BY title""")
+	cursor.execute("""SELECT title, artist, COUNT(*) FROM songs GROUP BY title""")
 	result_song = cursor.fetchall()
 	for res_song in result_song:
-		cursor.execute("""INSERT INTO songs_count(title, occurence) VALUES(?, ?)""", (res_song[0], res_song[1]))
+		cursor.execute("""INSERT INTO songs_count(title, artist, occurence) VALUES(?, ?, ?)""", (res_song[0], res_song[1], res_song[2]))
 
 def delete_duplicate(cursor):
 	#Doublon Deletor
@@ -118,7 +118,7 @@ def get_duration(cursor):
 	for row in rows:
 		datetime.datetime.now()
 		parameters = {"method": "track.getInfo", "api_key": lastFmToken, "artist": row[1], "track": row[2], "format": "json"}
-		response = requests.get("https://ws.audioscrobbler.com//2.0/", params=parameters)
+		response = requests.get("https://ws.audioscrobbler.com/2.0/", params=parameters)
 		if (response.status_code == 200):
 			json_parsed = response.json()
 			if ('error' in json_parsed):
@@ -161,17 +161,19 @@ def gen_html_report(cursor, data, expect):
 	else:
 		print("N/A")
 	print ("""</div><br><br><div class="row"><div class="column"><div class="minutes_title">Top Artists</div><div class="list">""")
-	cursor.execute("""SELECT artist FROM artist_count ORDER by occurence DESC LIMIT 10""")
+	cursor.execute(
+		"""SELECT artist, occurence FROM artist_count ORDER by occurence DESC LIMIT 10""")
 	rows = cursor.fetchall()
 	for row in rows:
 		print ("<br>")
-		print('{0}'.format(row[0]))
+		print('{0} - {1} plays'.format(row[0], row[1]))
 	print ("""</div></div><div class="column"><div class="minutes_title">Top Songs</div><div class="list">""")
-	cursor.execute("""SELECT title FROM songs_count ORDER by occurence DESC LIMIT 10""")
+	cursor.execute(
+		"""SELECT title, artist, occurence FROM songs_count ORDER by occurence DESC LIMIT 10""")
 	rows = cursor.fetchall()
 	for row in rows:
 		print ("<br>")
-		print ('{0}'.format(row[0]))
+		print('{2} plays: {0} - {1}'.format(row[0], row[1], row[2]))
 	print ("""</div></div></div></div></div></body></html>""")
 	sys.stdout.close()
 
