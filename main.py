@@ -52,7 +52,7 @@ def should_not_ignore(title, year, expect):
 def open_file():
 	if (sys.argv[1].endswith('.json')):
 		try:
-			file = open(sys.argv[1], "r")
+			file = open(sys.argv[1], "r", encoding="utf8")
 			return file
 		except:
 			print("Could not open your history file")
