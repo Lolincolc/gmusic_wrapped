@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS artist_count(
 CREATE TABLE IF NOT EXISTS songs_count(
 	id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	title TEXT,
+	artist TEXT,
 	occurence int
 );
 CREATE TABLE IF NOT EXISTS report(

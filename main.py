@@ -3,8 +3,9 @@ import datetime
 import sys, getopt
 import json
 import requests
+import time
 
-expect = 2018
+expect = "2018"
 verbose = False
 duration = False
 lastFmToken = ""
@@ -15,7 +16,7 @@ def flags():
 		if o == "-v":
 			global verbose
 			verbose = True
-		elif o in ("-d", "--duration"):
+		if o in ("-d", "--duration"):
 			global duration
 			duration = True
 			global lastFmToken
@@ -24,9 +25,9 @@ def flags():
 def i18n_string(string):
 	fr = string[:8]
 	en = string[:11]
-	if (fr.encode("utf-8") == "A écouté"):
+	if (fr == "A écouté"):
 		return True
-	elif (en.encode("utf-8") == "Listened to"):
+	elif (en == "Listened to"):
 		return True
 	else:
 		return False
@@ -34,14 +35,14 @@ def i18n_string(string):
 def i18n_title(title):
 	fr = title[:8]
 	en = title[:11]
-	if (fr.encode("utf-8") == "A écouté"):
+	if (fr == "A écouté"):
 		return title[9:]
-	elif (en.encode("utf-8") == "Listened to"):
+	elif (en == "Listened to"):
 		return title[12:]
 
 def should_not_ignore(title, year, expect):
 	if (i18n_string(title)):
-		if (year[:4].encode("utf-8") == str(expect)):
+		if (year[:4] == str(expect)):
 			return True
 		else:
 			False
@@ -51,13 +52,13 @@ def should_not_ignore(title, year, expect):
 def open_file():
 	if (sys.argv[1].endswith('.json')):
 		try:
-			file = open(sys.argv[1], "r")
+			file = open(sys.argv[1], "r", encoding="utf8")
 			return file
 		except:
-			print "Could not open your history file"
+			print("Could not open your history file")
 			sys.exit()
 	else:
-		print "Your history file should be a json file"
+		print("Your history file should be a json file")
 		sys.exit()
 
 def parse_json(file, cursor):
@@ -73,7 +74,7 @@ def print_db(cursor):
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} : {1} - {2} - {3}'.format(row[0], row[1].encode("utf-8"), row[2].encode("utf-8"), row[3]))
+		print('{0} : {1} - {2} - {3}'.format(row[0], row[1], row[2], row[3]))
 
 def prepare_tops(cursor):
 	#Artist top
@@ -83,10 +84,10 @@ def prepare_tops(cursor):
 		cursor.execute("""INSERT INTO artist_count(artist, occurence) VALUES(?, ?)""", (res[0], res[1]))
 
 	#Song Top
-	cursor.execute("""SELECT title, COUNT(*) FROM songs GROUP BY title""")
+	cursor.execute("""SELECT title, artist, COUNT(*) FROM songs GROUP BY title""")
 	result_song = cursor.fetchall()
 	for res_song in result_song:
-		cursor.execute("""INSERT INTO songs_count(title, occurence) VALUES(?, ?)""", (res_song[0], res_song[1]))
+		cursor.execute("""INSERT INTO songs_count(title, artist, occurence) VALUES(?, ?, ?)""", (res_song[0], res_song[1], res_song[2]))
 
 def delete_duplicate(cursor):
 	#Doublon Deletor
@@ -101,14 +102,14 @@ def print_full_tops(cursor):
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
+		print('{0} - {1}'.format(row[0], row[1]))
 
 	print ("####################Top Songs#####################")
 	cursor.execute("""SELECT title, occurence FROM songs_count ORDER by occurence DESC""")
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
+		print('{0} - {1}'.format(row[0], row[1]))
 
 def get_duration(cursor):
 	#Count duration
@@ -116,12 +117,12 @@ def get_duration(cursor):
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		parameters = {"method": "track.getInfo", "api_key": lastFmToken, "artist": row[1].encode("utf-8"), "track": row[2].encode("utf-8"), "format": "json"}
-		response = requests.get("http://ws.audioscrobbler.com//2.0/", params=parameters)
+		parameters = {"method": "track.getInfo", "api_key": lastFmToken, "artist": row[1], "track": row[2], "format": "json"}
+		response = requests.get("https://ws.audioscrobbler.com/2.0/", params=parameters)
 		if (response.status_code == 200):
 			json_parsed = response.json()
 			if ('error' in json_parsed):
-				print "error found"
+				print("error found", json_parsed)
 				cursor.execute("""UPDATE report SET duration = ? WHERE id = ?""", (0, row[0]))
 				continue
 			else:
@@ -129,6 +130,9 @@ def get_duration(cursor):
 					print ('duration {0}'.format(row[0]))
 				duration = json_parsed['track']['duration']
 				cursor.execute("""UPDATE report SET duration = ? WHERE id = ?""", (duration, row[0]))
+		else:
+			print("Non 200 response code returned, sleeping...")
+			time.sleep(1)
 
 	#Calcul total duration
 	if verbose:
@@ -141,7 +145,7 @@ def get_duration(cursor):
 		datetime.datetime.now()
 		song_count = row[0]
 		if verbose:
-			print('{0} : {1} - {2}- {3} - occurence : {4}'.format(row[0], row[1].encode("utf-8"), row[2].encode("utf-8"), row[3], row[4]))
+			print('{0} : {1} - {2}- {3} - occurence : {4}'.format(row[0], row[1], row[2], row[3], row[4]))
 		total_duration += row[3] * row[4]
 		if row[3] == 0:
 			error_rate = error_rate + 1
@@ -149,7 +153,7 @@ def get_duration(cursor):
 
 def gen_html_report(cursor, data, expect):
 	sys.stdout = open('report.html', 'w')
-	print ("""<!DOCTYPE html><html><head><title>Wrapped</title><style type="text/css">body{background-color: #f58d15;}.center-div{position: absolute; margin: auto; top: 0; right: 0; bottom: 0; left: 0; width: 50%; height: 80%; background-color: #503651; border-radius: 3px; padding: 10px;}.play_logo{width: 7%;position: relative;top: 30px;left: 50px;}.title_logo{width: 30%;position: relative;top: 30px;left: 50px;}.right_title{position: absolute;font-family: "Product Sans";top: 55px;right: 10%;font-size: 2em;color: #f2481d;}.container{position: relative;top: 13%;left: 53px;}.minutes_title{font-family: "Product Sans";font-size: 2em;color: #f58d15;}.minutes{font-family: "Product Sans";font-size: 6em;color: #f58d15;}.row{display: flex;}.column{flex: 50%;}.list{font-family: "Roboto";font-size: 1.5em;line-height: 30px;color: #f58d15;}</style></head><body><div class="center-div"><img src="play_logo.png" class="play_logo"><img src="title.png" class="title_logo"/><span class="right_title">""")
+	print ("""<!DOCTYPE html><html><head><title>Wrapped</title><style type="text/css">body{background-color: #f58d15;}.center-div{position: absolute; margin: auto; top: 0; right: 0; bottom: 0; left: 0; width: 90%; height: 90%; background-color: #503651; border-radius: 3px; padding: 10px;}.play_logo{width: 7%;position: relative;top: 30px;left: 50px;}.title_logo{width: 30%;position: relative;top: 30px;left: 50px;}.right_title{position: absolute;font-family: "Product Sans";top: 55px;right: 10%;font-size: 2em;color: #f2481d;}.container{position: relative;top: 13%;left: 53px;}.minutes_title{font-family: "Product Sans";font-size: 2em;color: #f58d15;}.minutes{font-family: "Product Sans";font-size: 6em;color: #f58d15;}.row{display: flex;}.column{flex: 50%;}.list{font-family: "Roboto";font-size: 1.5em;line-height: 30px;color: #f58d15;}</style></head><body><div class="center-div"><img src="play_logo.png" class="play_logo"><img src="title.png" class="title_logo"/><span class="right_title">""")
 	print (expect)
 	print (""" Wrapped</span><div class="container"><div class="minutes_title">Minutes Listened</div><div class="minutes">""")
 	if duration:
@@ -157,17 +161,19 @@ def gen_html_report(cursor, data, expect):
 	else:
 		print("N/A")
 	print ("""</div><br><br><div class="row"><div class="column"><div class="minutes_title">Top Artists</div><div class="list">""")
-	cursor.execute("""SELECT artist FROM artist_count ORDER by occurence DESC LIMIT 10""")
+	cursor.execute(
+		"""SELECT artist, occurence FROM artist_count ORDER by occurence DESC LIMIT 10""")
 	rows = cursor.fetchall()
 	for row in rows:
 		print ("<br>")
-		print('{0}'.format(row[0].encode("utf-8")))
+		print('{0} - {1} plays'.format(row[0], row[1]))
 	print ("""</div></div><div class="column"><div class="minutes_title">Top Songs</div><div class="list">""")
-	cursor.execute("""SELECT title FROM songs_count ORDER by occurence DESC LIMIT 10""")
+	cursor.execute(
+		"""SELECT title, artist, occurence FROM songs_count ORDER by occurence DESC LIMIT 10""")
 	rows = cursor.fetchall()
 	for row in rows:
 		print ("<br>")
-		print ('{0}'.format(row[0].encode("utf-8")))
+		print('{2} plays: {0} - {1}'.format(row[0], row[1], row[2]))
 	print ("""</div></div></div></div></div></body></html>""")
 	sys.stdout.close()
 
@@ -179,14 +185,14 @@ def gen_report(cursor, data, expect):
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
+		print('{0} - {1}'.format(row[0], row[1]))
 
 	print ("#################### Top Songs #####################")
 	cursor.execute("""SELECT title, occurence FROM songs_count ORDER by occurence DESC LIMIT 10""")
 	rows = cursor.fetchall()
 	for row in rows:
 		datetime.datetime.now()
-		print('{0} - {1}'.format(row[0].encode("utf-8"), row[1]))
+		print('{0} - {1}'.format(row[0], row[1]))
 
 	if duration:
 		print ("\n#################### Duration #####################")
